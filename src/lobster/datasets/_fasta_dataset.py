@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -73,10 +74,12 @@ class FASTADataset(SizedSequenceDataset):
         return sequence
 
     def _build_index(self) -> tuple[numpy.ndarray, numpy.ndarray]:
+        # Security: sanitize file paths to prevent command injection via shell=True
+        safe_path = shlex.quote(str(self.root))
         return (
             numpy.fromstring(
                 subprocess.check_output(
-                    f"cat {self.root} | tqdm --bytes --total $(wc -c < {self.root})"
+                    f"cat {safe_path} | tqdm --bytes --total $(wc -c < {safe_path})"
                     "| grep --byte-offset '^>' -o | cut -d: -f1",
                     shell=True,
                 ),
@@ -85,7 +88,7 @@ class FASTADataset(SizedSequenceDataset):
             ),
             numpy.fromstring(
                 subprocess.check_output(
-                    f"cat {self.root} | tqdm --bytes --total $(wc -c < {self.root})"
+                    f"cat {safe_path} | tqdm --bytes --total $(wc -c < {safe_path})"
                     '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
                     "'{print length($1)}'",
                     shell=True,

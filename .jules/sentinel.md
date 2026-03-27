@@ -1,0 +1,4 @@
+## 2024-05-18 - [Path-based Command Injection via shell=True]
+**Vulnerability:** Command injection vulnerability in `subprocess.check_output(..., shell=True)` via an unsanitized path format string (e.g., `f"cat {path}"`). If the path contained malicious characters like `;` or `|`, they would be evaluated by the shell as part of the command.
+**Learning:** Found in `src/lobster/datasets/_fasta_dataset.py` and `src/lobster/data/_structure_datamodule.py`. Even locally controlled file paths (like `dataset.root`) shouldn't be blindly substituted into `shell=True` commands without sanitization, as an attacker controlling the initial path string could achieve arbitrary code execution.
+**Prevention:** Avoid `shell=True` when possible. If required, use `shlex.quote()` on all path components to ensure they are passed as single safe string arguments.

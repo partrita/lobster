@@ -1,0 +1,1 @@
+{"chunks": [{"chunk_bytes": 2122, "chunk_size": 10, "dim": null, "filename": "data.parquet"}], "config": {"chunk_bytes": null, "chunk_size": null, "compression": null, "data_format": ["string", "string"], "data_spec": null, "encryption": null, "item_loader": "ParquetLoader"}, "updated_at": "1774616923.782337"}
