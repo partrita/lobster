@@ -1,6 +1,5 @@
 import os
 import random
-import shlex
 import subprocess
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -52,18 +51,36 @@ class FastaStructureDataset(SizedSequenceDataset):
     def _build_index(self):
         # Use grep and awk to get 100M/s on local SSD.
         # Should process your enormous 100G fasta in ~10 min single core...
-        # Security: sanitize file paths to prevent command injection via shell=True
-        safe_path = shlex.quote(str(self.data_file))
-        bytes_offsets = subprocess.check_output(
-            f"cat {safe_path} | tqdm --bytes --total $(wc -c < {safe_path})| grep --byte-offset '^>' -o | cut -d: -f1",
-            shell=True,
+        # Security: Remove shell=True entirely to prevent command injection
+        file_path = str(self.data_file)
+        file_size = str(os.path.getsize(file_path))
+
+        # Build bytes_offsets pipeline
+        p1 = subprocess.Popen(["cat", file_path], stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["tqdm", "--bytes", "--total", file_size], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p3 = subprocess.Popen(["grep", "--byte-offset", "^>", "-o"], stdin=p2.stdout, stdout=subprocess.PIPE)
+        p4 = subprocess.Popen(["cut", "-d:", "-f1"], stdin=p3.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        p2.stdout.close()
+        p3.stdout.close()
+        bytes_offsets = p4.communicate()[0]
+
+        # Build fasta_lengths pipeline
+        p1_len = subprocess.Popen(["cat", file_path], stdout=subprocess.PIPE)
+        p2_len = subprocess.Popen(
+            ["tqdm", "--bytes", "--total", file_size], stdin=p1_len.stdout, stdout=subprocess.PIPE
         )
-        fasta_lengths = subprocess.check_output(
-            f"cat {safe_path} | tqdm --bytes --total $(wc -c < {safe_path})"
-            '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
-            "'{print length($1)}'",
-            shell=True,
+        p3_len = subprocess.Popen(
+            ["awk", '/^>/ {print "";next;} { printf("%s",$0);}'], stdin=p2_len.stdout, stdout=subprocess.PIPE
         )
+        p4_len = subprocess.Popen(["tail", "-n+2"], stdin=p3_len.stdout, stdout=subprocess.PIPE)
+        p5_len = subprocess.Popen(["awk", "{print length($1)}"], stdin=p4_len.stdout, stdout=subprocess.PIPE)
+        p1_len.stdout.close()
+        p2_len.stdout.close()
+        p3_len.stdout.close()
+        p4_len.stdout.close()
+        fasta_lengths = p5_len.communicate()[0]
+
         bytes_np = np.fromstring(bytes_offsets, dtype=np.int64, sep=" ")
         sizes_np = np.fromstring(fasta_lengths, dtype=np.int64, sep=" ")
         return bytes_np, sizes_np
