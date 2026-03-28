@@ -1,5 +1,6 @@
 import os
 import random
+import shlex
 import subprocess
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -51,13 +52,14 @@ class FastaStructureDataset(SizedSequenceDataset):
     def _build_index(self):
         # Use grep and awk to get 100M/s on local SSD.
         # Should process your enormous 100G fasta in ~10 min single core...
+        safe_data_file = shlex.quote(str(self.data_file))
         bytes_offsets = subprocess.check_output(
-            f"cat {self.data_file} | tqdm --bytes --total $(wc -c < {self.data_file})"
+            f"cat {safe_data_file} | tqdm --bytes --total $(wc -c < {safe_data_file}) "
             "| grep --byte-offset '^>' -o | cut -d: -f1",
             shell=True,
         )
         fasta_lengths = subprocess.check_output(
-            f"cat {self.data_file} | tqdm --bytes --total $(wc -c < {self.data_file})"
+            f"cat {safe_data_file} | tqdm --bytes --total $(wc -c < {safe_data_file}) "
             '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
             "'{print length($1)}'",
             shell=True,
