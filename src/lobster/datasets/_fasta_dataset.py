@@ -1,4 +1,3 @@
-import shlex
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -74,25 +73,18 @@ class FASTADataset(SizedSequenceDataset):
         return sequence
 
     def _build_index(self) -> tuple[numpy.ndarray, numpy.ndarray]:
-        safe_root = shlex.quote(str(self.root))
+        p1 = subprocess.Popen(["cat", str(self.root)], stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["grep", "--byte-offset", "^>", "-o"], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p3 = subprocess.Popen(["cut", "-d:", "-f1"], stdin=p2.stdout, stdout=subprocess.PIPE)
+        out1, _ = p3.communicate()
+
+        p4 = subprocess.Popen(["cat", str(self.root)], stdout=subprocess.PIPE)
+        p5 = subprocess.Popen(["awk", '/^>/ {print "";next;} { printf("%s",$0);}'], stdin=p4.stdout, stdout=subprocess.PIPE)
+        p6 = subprocess.Popen(["tail", "-n+2"], stdin=p5.stdout, stdout=subprocess.PIPE)
+        p7 = subprocess.Popen(["awk", "{print length($1)}"], stdin=p6.stdout, stdout=subprocess.PIPE)
+        out2, _ = p7.communicate()
+
         return (
-            numpy.fromstring(
-                subprocess.check_output(
-                    f"cat {safe_root} | tqdm --bytes --total $(wc -c < {safe_root}) "
-                    "| grep --byte-offset '^>' -o | cut -d: -f1",
-                    shell=True,
-                ),
-                dtype=numpy.int64,
-                sep=" ",
-            ),
-            numpy.fromstring(
-                subprocess.check_output(
-                    f"cat {safe_root} | tqdm --bytes --total $(wc -c < {safe_root}) "
-                    '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
-                    "'{print length($1)}'",
-                    shell=True,
-                ),
-                dtype=numpy.int64,
-                sep=" ",
-            ),
+            numpy.fromstring(out1, dtype=numpy.int64, sep=" "),
+            numpy.fromstring(out2, dtype=numpy.int64, sep=" "),
         )

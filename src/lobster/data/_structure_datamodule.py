@@ -1,6 +1,5 @@
 import os
 import random
-import shlex
 import subprocess
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -52,20 +51,19 @@ class FastaStructureDataset(SizedSequenceDataset):
     def _build_index(self):
         # Use grep and awk to get 100M/s on local SSD.
         # Should process your enormous 100G fasta in ~10 min single core...
-        safe_data_file = shlex.quote(str(self.data_file))
-        bytes_offsets = subprocess.check_output(
-            f"cat {safe_data_file} | tqdm --bytes --total $(wc -c < {safe_data_file}) "
-            "| grep --byte-offset '^>' -o | cut -d: -f1",
-            shell=True,
-        )
-        fasta_lengths = subprocess.check_output(
-            f"cat {safe_data_file} | tqdm --bytes --total $(wc -c < {safe_data_file}) "
-            '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
-            "'{print length($1)}'",
-            shell=True,
-        )
-        bytes_np = np.fromstring(bytes_offsets, dtype=np.int64, sep=" ")
-        sizes_np = np.fromstring(fasta_lengths, dtype=np.int64, sep=" ")
+        p1 = subprocess.Popen(["cat", str(self.data_file)], stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["grep", "--byte-offset", "^>", "-o"], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p3 = subprocess.Popen(["cut", "-d:", "-f1"], stdin=p2.stdout, stdout=subprocess.PIPE)
+        out1, _ = p3.communicate()
+
+        p4 = subprocess.Popen(["cat", str(self.data_file)], stdout=subprocess.PIPE)
+        p5 = subprocess.Popen(["awk", '/^>/ {print "";next;} { printf("%s",$0);}'], stdin=p4.stdout, stdout=subprocess.PIPE)
+        p6 = subprocess.Popen(["tail", "-n+2"], stdin=p5.stdout, stdout=subprocess.PIPE)
+        p7 = subprocess.Popen(["awk", "{print length($1)}"], stdin=p6.stdout, stdout=subprocess.PIPE)
+        out2, _ = p7.communicate()
+
+        bytes_np = np.fromstring(out1, dtype=np.int64, sep=" ")
+        sizes_np = np.fromstring(out2, dtype=np.int64, sep=" ")
         return bytes_np, sizes_np
 
     def get_fasta_sequence(self, idx: int):
