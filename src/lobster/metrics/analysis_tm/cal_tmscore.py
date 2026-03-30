@@ -13,11 +13,11 @@ from tqdm.auto import tqdm
 def run_tmalign(query, reference, fast=True):
     # --> one to one
     exec = "./TMalign"
-    cmd = f"{exec} {query} {reference}"
+    cmd_args = [exec, query, reference]
     if fast:
-        cmd += " -fast"
+        cmd_args.append("-fast")
     try:
-        output = subprocess.check_output(cmd, shell=True)
+        output = subprocess.check_output(cmd_args)
     except subprocess.CalledProcessError:
         return np.nan
 

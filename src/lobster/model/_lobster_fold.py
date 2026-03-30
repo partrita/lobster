@@ -279,8 +279,8 @@ class FoldseekTransform(Transform):
 
             path_to_pdb = pdb_temp_file.name
 
-            cmd = f"{self._foldseek} structureto3didescriptor -v 0 --threads 1 --chain-name-mode 1 {path_to_pdb} {tsv_temp_file.name}"
-            os.system(cmd)
+            cmd_args = [self._foldseek, "structureto3didescriptor", "-v", "0", "--threads", "1", "--chain-name-mode", "1", path_to_pdb, tsv_temp_file.name]
+            subprocess.run(cmd_args, check=True)
 
             seq_dict = {}
             name = os.path.basename(path_to_pdb)

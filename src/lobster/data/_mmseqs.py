@@ -82,8 +82,12 @@ class MMSeqsRunner:
         # os.rename("cluster_representatives.fasta", output_fasta_file)
 
         # Remove temporary files (optional)
-        subprocess.run(["rm -f cluster*"], shell=True)
-        subprocess.run(["rm -f combined_db*"], shell=True)
+        import glob
+        import os
+        for file in glob.glob("cluster*"):
+            os.remove(file)
+        for file in glob.glob("combined_db*"):
+            os.remove(file)
         subprocess.run(["rm", "-rf", "tmp"])
 
         print(f"Clustering completed. Results saved to {output_fasta_file}")
