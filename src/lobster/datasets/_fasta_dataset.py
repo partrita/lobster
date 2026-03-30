@@ -73,24 +73,35 @@ class FASTADataset(SizedSequenceDataset):
         return sequence
 
     def _build_index(self) -> tuple[numpy.ndarray, numpy.ndarray]:
+        import os
+
+        file_size = os.path.getsize(self.root)
+
+        p1 = subprocess.Popen(["cat", str(self.root)], stdout=subprocess.PIPE)
+        p2 = subprocess.Popen(["tqdm", "--bytes", "--total", str(file_size)], stdin=p1.stdout, stdout=subprocess.PIPE)
+        p3 = subprocess.Popen(["grep", "--byte-offset", "^>", "-o"], stdin=p2.stdout, stdout=subprocess.PIPE)
+        p4 = subprocess.Popen(["cut", "-d:", "-f1"], stdin=p3.stdout, stdout=subprocess.PIPE)
+        p1.stdout.close()
+        p2.stdout.close()
+        p3.stdout.close()
+        out1, _ = p4.communicate()
+
+        p1_b = subprocess.Popen(["cat", str(self.root)], stdout=subprocess.PIPE)
+        p2_b = subprocess.Popen(
+            ["tqdm", "--bytes", "--total", str(file_size)], stdin=p1_b.stdout, stdout=subprocess.PIPE
+        )
+        p3_b = subprocess.Popen(
+            ["awk", '/^>/ {print "";next;} { printf("%s",$0);}'], stdin=p2_b.stdout, stdout=subprocess.PIPE
+        )
+        p4_b = subprocess.Popen(["tail", "-n+2"], stdin=p3_b.stdout, stdout=subprocess.PIPE)
+        p5_b = subprocess.Popen(["awk", "{print length($1)}"], stdin=p4_b.stdout, stdout=subprocess.PIPE)
+        p1_b.stdout.close()
+        p2_b.stdout.close()
+        p3_b.stdout.close()
+        p4_b.stdout.close()
+        out2, _ = p5_b.communicate()
+
         return (
-            numpy.fromstring(
-                subprocess.check_output(
-                    f"cat {self.root} | tqdm --bytes --total $(wc -c < {self.root})"
-                    "| grep --byte-offset '^>' -o | cut -d: -f1",
-                    shell=True,
-                ),
-                dtype=numpy.int64,
-                sep=" ",
-            ),
-            numpy.fromstring(
-                subprocess.check_output(
-                    f"cat {self.root} | tqdm --bytes --total $(wc -c < {self.root})"
-                    '| awk \'/^>/ {print "";next;} { printf("%s",$0);}\' | tail -n+2 | awk '
-                    "'{print length($1)}'",
-                    shell=True,
-                ),
-                dtype=numpy.int64,
-                sep=" ",
-            ),
+            numpy.fromstring(out1, dtype=numpy.int64, sep=" "),
+            numpy.fromstring(out2, dtype=numpy.int64, sep=" "),
         )
