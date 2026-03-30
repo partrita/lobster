@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 from collections.abc import Callable
 from typing import Any
@@ -279,8 +280,22 @@ class FoldseekTransform(Transform):
 
             path_to_pdb = pdb_temp_file.name
 
-            cmd_args = [self._foldseek, "structureto3didescriptor", "-v", "0", "--threads", "1", "--chain-name-mode", "1", path_to_pdb, tsv_temp_file.name]
-            subprocess.run(cmd_args, check=True)
+            cmd_args = [
+                self._foldseek,
+                "structureto3didescriptor",
+                "-v",
+                "0",
+                "--threads",
+                "1",
+                "--chain-name-mode",
+                "1",
+                path_to_pdb,
+                tsv_temp_file.name,
+            ]
+
+            result = subprocess.run(cmd_args, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"Foldseek failed with error: {result.stderr}")
 
             seq_dict = {}
             name = os.path.basename(path_to_pdb)

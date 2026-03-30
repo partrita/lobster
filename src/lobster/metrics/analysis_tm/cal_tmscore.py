@@ -12,13 +12,15 @@ from tqdm.auto import tqdm
 
 def run_tmalign(query, reference, fast=True):
     # --> one to one
-    exec = "./TMalign"
-    cmd_args = [exec, query, reference]
+    cmd_args = ["./TMalign", query, reference]
     if fast:
         cmd_args.append("-fast")
     try:
-        output = subprocess.check_output(cmd_args)
-    except subprocess.CalledProcessError:
+        process = subprocess.Popen(cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, _ = process.communicate()
+        if process.returncode != 0:
+            return np.nan
+    except OSError:
         return np.nan
 
     score_lines = []

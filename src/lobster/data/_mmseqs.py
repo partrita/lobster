@@ -1,5 +1,7 @@
 """Code for MMseqs2. Install directions in README."""
 
+import glob
+import os
 import shutil
 import subprocess
 from collections.abc import Sequence
@@ -82,12 +84,12 @@ class MMSeqsRunner:
         # os.rename("cluster_representatives.fasta", output_fasta_file)
 
         # Remove temporary files (optional)
-        import glob
-        import os
         for file in glob.glob("cluster*"):
-            os.remove(file)
+            if os.path.isfile(file):
+                os.remove(file)
         for file in glob.glob("combined_db*"):
-            os.remove(file)
+            if os.path.isfile(file):
+                os.remove(file)
         subprocess.run(["rm", "-rf", "tmp"])
 
         print(f"Clustering completed. Results saved to {output_fasta_file}")
