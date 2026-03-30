@@ -282,7 +282,7 @@ class FoldseekTransform(Transform):
 
             result = subprocess.run(
                 [
-                    str(self._foldseek),
+                    "foldseek",
                     "structureto3didescriptor",
                     "-v",
                     "0",
@@ -293,6 +293,7 @@ class FoldseekTransform(Transform):
                     path_to_pdb,
                     tsv_temp_file.name,
                 ],
+                executable=str(self._foldseek),
                 capture_output=True,
                 text=True,
             )

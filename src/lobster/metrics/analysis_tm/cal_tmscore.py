@@ -13,11 +13,12 @@ from tqdm.auto import tqdm
 def run_tmalign(query, reference, fast=True):
     # --> one to one
     try:
-        process = subprocess.Popen(
-            ["./TMalign", query, reference, "-fast"] if fast else ["./TMalign", query, reference],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        if fast:
+            process = subprocess.Popen(
+                ["./TMalign", query, reference, "-fast"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        else:
+            process = subprocess.Popen(["./TMalign", query, reference], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, _ = process.communicate()
         if process.returncode != 0:
             return np.nan
